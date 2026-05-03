@@ -31,15 +31,54 @@ updateClock();
 // ── Sidebar toggle (mobile) ────────────────────────────────────
 const toggleBtn = document.getElementById('sidebar-toggle');
 const sidebar   = document.getElementById('sidebar');
+const overlay   = document.getElementById('sidebar-overlay');
+
+function openSidebar() {
+  sidebar?.classList.add('open');
+  overlay?.classList.add('visible');
+  document.body.style.overflow = 'hidden'; // prevent bg scroll on mobile
+}
+
+function closeSidebar() {
+  sidebar?.classList.remove('open');
+  overlay?.classList.remove('visible');
+  document.body.style.overflow = '';
+}
+
 if (toggleBtn && sidebar) {
-  toggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+  toggleBtn.addEventListener('click', () => {
+    if (sidebar.classList.contains('open')) closeSidebar();
+    else openSidebar();
+  });
+}
+
+// Tap overlay to close
+if (overlay) {
+  overlay.addEventListener('click', closeSidebar);
+}
+
+// Swipe-left on sidebar to close (touch devices)
+if (sidebar) {
+  let touchStartX = 0;
+  sidebar.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  sidebar.addEventListener('touchend', e => {
+    if (touchStartX - e.changedTouches[0].clientX > 60) closeSidebar();
+  }, { passive: true });
 }
 
 // ── Close sidebar on nav click (mobile) ───────────────────────
 document.querySelectorAll('.nav-link').forEach(link => {
   link.addEventListener('click', () => {
-    if (window.innerWidth < 768) sidebar?.classList.remove('open');
+    if (window.innerWidth < 768) closeSidebar();
   });
+});
+
+// Reopen scroll lock on resize back to desktop
+window.addEventListener('resize', () => {
+  if (window.innerWidth >= 768) {
+    document.body.style.overflow = '';
+    overlay?.classList.remove('visible');
+  }
 });
 
 // ── Topbar session scan counter ────────────────────────────────

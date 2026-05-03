@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#050812"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>Login — RECON-X</title>
   <meta name="description" content="Sign in to RECON-X Reconnaissance Platform"/>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}"/>
@@ -23,7 +27,7 @@
       --shadow-glow: 0 0 15px rgba(0, 245, 212, 0.25);
       --glass-blur: blur(20px);
     }
-    html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--t);overflow:hidden}
+    html,body{min-height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--t);overflow-x:hidden}
 
     /* ── Background ── */
     .bg{position:fixed;inset:0;z-index:0}
@@ -43,25 +47,62 @@
       background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(0,0,0,.05) 3px,rgba(0,0,0,.05) 4px)}
 
     /* ── Layout ── */
-    .shell{position:relative;z-index:1;display:grid;grid-template-columns:1fr 750px;height:100vh}
+    .shell{position:relative;z-index:1;display:grid;grid-template-columns:1fr 750px;min-height:100vh}
+
     /* ── Responsive Layout ── */
+    /* Large laptops */
+    @media(max-width:1300px){
+      .shell{grid-template-columns:1fr 600px}
+    }
+    /* Small laptops / landscape iPad */
     @media(max-width:1100px){
-      .shell{grid-template-columns:1fr 500px;}
+      .shell{grid-template-columns:1fr 480px}
     }
+    /* Portrait tablets (iPad, Android tab) */
     @media(max-width:900px){
-      .shell{grid-template-columns:1fr; height: auto; min-height: 100vh;}
-      .left-panel{padding: 40px; text-align: center;}
-      .left-panel::after{display: none;}
-      .feature-list{align-items: center; text-align: center;}
-      .right-panel{border-left: none; border-top: 1px solid var(--b); padding: 40px 20px;}
-      .form-box{max-width: 100%;}
+      .shell{grid-template-columns:1fr;min-height:100vh;height:auto}
+      .left-panel{padding:40px 32px;min-height:auto}
+      .left-panel::after{display:none}
+      .feature-list{align-items:center;text-align:center}
+      .radar{width:220px;height:220px;margin-bottom:28px}
+      .right-panel{
+        border-left:none;border-top:1px solid var(--b);
+        padding:40px 32px;height:auto;overflow-y:visible
+      }
+      .form-box{max-width:520px;margin:0 auto}
     }
+    /* Standard phones / small tablets in landscape */
+    @media(max-width:640px){
+      .left-panel{padding:32px 20px}
+      .left-title{font-size:2.2rem}
+      .radar{width:180px;height:180px;margin-bottom:20px}
+      .left-sub{font-size:.82rem}
+      .right-panel{padding:32px 20px}
+    }
+    /* Small phones — hide the decorative left panel entirely */
     @media(max-width:480px){
-      .left-panel{padding: 30px 15px;}
-      .left-title{font-size: 2.5rem;}
-      .radar{transform: scale(0.8); margin-bottom: 20px;}
-      .tabs{flex-direction: column;}
-      .right-panel{padding: 30px 15px;}
+      .left-panel{display:none}
+      .shell{grid-template-columns:1fr;min-height:100dvh}
+      .right-panel{
+        border:none;padding:32px 20px;
+        height:auto;min-height:100dvh;
+        display:flex;align-items:flex-start;justify-content:center
+      }
+      .form-box{width:100%;max-width:100%;padding:0}
+      .tabs{gap:4px}
+      .tab{padding:.6rem .5rem;font-size:.8rem}
+      .hd h1{font-size:1.3rem}
+      .field{margin-top:1.6rem}
+      .sub{margin-top:2.4rem}
+    }
+    /* Very small phones (iPhone SE, Galaxy A) */
+    @media(max-width:375px){
+      .right-panel{padding:24px 16px}
+      .rp-logo{margin-bottom:1.4rem}
+      .field{margin-top:1.3rem}
+      .sub{margin-top:2rem;padding:1rem}
+      .pw-rules{padding:.6rem .8rem}
+      .pw-rule{font-size:.7rem}
     }
 
     /* ── Left panel (visual) ── */
@@ -130,7 +171,7 @@
     .right-panel{
       display:flex;align-items:flex-start;justify-content:center;
       padding:28px 40px;background:var(--s);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
-      border-left:1px solid var(--b);overflow-y:auto;height:100vh; box-shadow: -10px 0 30px rgba(0,0,0,0.5);}
+      border-left:1px solid var(--b);overflow-y:auto;min-height:100dvh;box-shadow:-10px 0 30px rgba(0,0,0,0.5)}
     .form-box{width:100%;max-width:500px;margin:auto 0;padding:16px 0}
 
     /* Logo (compact, right panel) */
