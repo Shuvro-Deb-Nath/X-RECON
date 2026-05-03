@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Web CLI — RECON-X{% endblock %}
+{% block breadcrumb %}Web CLI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__text">
+    <h1 class="page-title">Web CLI</h1>
+    <p class="page-sub">Command-line interface — type <code>help</code> to get started</p>
+  </div>
+  <button class="btn btn--ghost" id="cli-clear-btn">Clear</button>
+</div>
+
+<div class="cli-wrapper" id="cli-wrapper">
+
+  <!-- ── Terminal window ── -->
+  <div class="cli-terminal" id="cli-terminal" tabindex="0">
+    <!-- Window title bar -->
+    <div class="cli-titlebar" id="cli-titlebar">
+      <div class="cli-titlebar__dots">
+        <span class="dot dot--red"></span>
+        <span class="dot dot--yellow"></span>
+        <span class="dot dot--green"></span>
+      </div>
+      <span class="cli-titlebar__title">root@recon-x: ~</span>
+      <div class="cli-titlebar__right">
+        <span class="db-pill {% if db %}db-pill--ok{% else %}db-pill--err{% endif %}">
+          {{ 'MySQL ●' if db else 'DB offline' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Output area -->
+    <div class="cli-output" id="cli-output">
+      <div class="cli-welcome" id="cli-welcome">
+        <pre class="cli-banner">
+ ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗      ██╗  ██╗
+ ██╔══██╗██╔════╝██╔════╝██╔═══██╗████╗  ██║      ╚██╗██╔╝
+ ██████╔╝█████╗  ██║     ██║   ██║██╔██╗ ██║       ╚███╔╝ 
+ ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║       ██╔██╗ 
+ ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║      ██╔╝ ██╗
+ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝      ╚═╝  ╚═╝
+        </pre>
+        <div class="cli-init-lines" id="cli-init-lines">
+          <div class="cli-line cli-line--system">[SYSTEM] RECON-X v1.0 — Modular Reconnaissance Platform</div>
+          <div class="cli-line cli-line--system">[SYSTEM] Type <span class="cli-keyword">help</span> to see available commands</div>
+          <div class="cli-line cli-line--{% if db %}ok{% else %}warn{% endif %}">
+            [DB] MySQL status: {% if db %}<span class="cli-ok">CONNECTED</span>{% else %}<span class="cli-warn">OFFLINE — results won't persist</span>{% endif %}
+          </div>
+          <div class="cli-line cli-line--blank"></div>
+        </div>
+      </div>
+      <div id="cli-history"></div>
+    </div>
+
+    <!-- Input row -->
+    <div class="cli-input-row" id="cli-input-row">
+      <span class="cli-prompt" id="cli-prompt">
+        <span class="cli-prompt__user">root</span><span class="cli-prompt__at">@</span><span class="cli-prompt__host">recon-x</span><span class="cli-prompt__path">:~#</span>
+      </span>
+      <input type="text" id="cli-input" class="cli-input" autocomplete="off"
+             spellcheck="false" autocorrect="off" autocapitalize="off"
+             aria-label="CLI command input" placeholder="type a command…" />
+    </div>
+  </div>
+
+  <!-- ── Side hint panel ── -->
+  <div class="cli-hints" id="cli-hints">
+    <div class="cli-hints__header">Command Reference</div>
+    <ul class="cli-hints__list">
+      <li>
+        <code>scan &lt;domain&gt;</code>
+        <span>Full recon scan</span>
+      </li>
+      <li>
+        <code>scan &lt;domain&gt; -m A,B</code>
+        <span>Select modules</span>
+      </li>
+      <li>
+        <code>scan &lt;domain&gt; -t 30</code>
+        <span>Set thread count</span>
+      </li>
+      <li>
+        <code>status &lt;scan_id&gt;</code>
+        <span>Poll scan status</span>
+      </li>
+      <li>
+        <code>show results</code>
+        <span>All DB results</span>
+      </li>
+      <li>
+        <code>show subdomains &lt;domain&gt;</code>
+        <span>Saved subdomains</span>
+      </li>
+      <li>
+        <code>clear</code>
+        <span>Clear terminal</span>
+      </li>
+      <li>
+        <code>help</code>
+        <span>Full help menu</span>
+      </li>
+    </ul>
+
+    <div class="cli-hints__header mt-2">Examples</div>
+    <div class="cli-hints__examples" id="cli-examples">
+      <button class="example-chip" data-cmd="scan example.com">scan example.com</button>
+      <button class="example-chip" data-cmd="scan tesla.com -m A,B -t 30">scan tesla.com -m A,B -t 30</button>
+      <button class="example-chip" data-cmd="show results">show results</button>
+      <button class="example-chip" data-cmd="help">help</button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/cli.js') }}"></script>
+{% endblock %}

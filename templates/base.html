@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}RECON-X{% endblock %}</title>
+  <meta name="description" content="RECON-X — Professional Modular Reconnaissance Platform for security researchers." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+
+  <!-- Main CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  <!-- ── Ambient background particles ── -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow--1"></div>
+  <div class="bg-glow bg-glow--2"></div>
+
+  <!-- ── Sidebar Navigation ── -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="sidebar__logo">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="18" r="16" stroke="url(#lg1)" stroke-width="2"/>
+          <path d="M18 6 L30 24 L6 24 Z" fill="url(#lg2)" opacity="0.8"/>
+          <circle cx="18" cy="18" r="4" fill="#00f5d4"/>
+          <defs>
+            <linearGradient id="lg1" x1="0" y1="0" x2="36" y2="36">
+              <stop offset="0%" stop-color="#00f5d4"/>
+              <stop offset="100%" stop-color="#7b2ff7"/>
+            </linearGradient>
+            <linearGradient id="lg2" x1="0" y1="0" x2="36" y2="36">
+              <stop offset="0%" stop-color="#00f5d4" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#7b2ff7" stop-opacity="0.6"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="sidebar__brand-text">
+        <span class="sidebar__brand-name">RECON<span class="accent">-X</span></span>
+        <span class="sidebar__brand-sub">Recon Platform v1.0</span>
+      </div>
+    </div>
+
+    <div class="sidebar__divider"></div>
+
+    <ul class="sidebar__nav" id="main-nav">
+      <li>
+        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" id="nav-dashboard">
+          <span class="nav-link__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+          </span>
+          <span class="nav-link__label">Dashboard</span>
+          <span class="nav-link__indicator"></span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('scan_page') }}" class="nav-link {% if request.endpoint == 'scan_page' %}active{% endif %}" id="nav-scan">
+          <span class="nav-link__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="11" cy="11" r="7"/>
+              <path d="M16.5 16.5 L21 21"/>
+              <path d="M11 8 v3 l2 2"/>
+            </svg>
+          </span>
+          <span class="nav-link__label">New Scan</span>
+          <span class="nav-link__indicator"></span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('results_page') }}" class="nav-link {% if request.endpoint == 'results_page' %}active{% endif %}" id="nav-results">
+          <span class="nav-link__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M9 12h6M9 16h6M9 8h2"/>
+              <path d="M5 3h14a2 2 0 012 2v16l-3-2-3 2-3-2-3 2-3-2V5a2 2 0 012-2z"/>
+            </svg>
+          </span>
+          <span class="nav-link__label">Results</span>
+          <span class="nav-link__indicator"></span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('cli_page') }}" class="nav-link {% if request.endpoint == 'cli_page' %}active{% endif %}" id="nav-cli">
+          <span class="nav-link__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="2" y="3" width="20" height="18" rx="2"/>
+              <path d="M7 8 l3 3-3 3"/>
+              <path d="M13 14h4"/>
+            </svg>
+          </span>
+          <span class="nav-link__label">Web CLI</span>
+          <span class="nav-link__indicator"></span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="sidebar__footer">
+      {% if is_admin %}
+      <div class="db-status" style="margin-bottom:0.5rem;background:rgba(123,47,247,0.12);border-color:rgba(123,47,247,0.3);color:#a78bfa;">
+        <span class="db-status__dot" style="background:#7b2ff7;box-shadow:0 0 6px #7b2ff7;"></span>
+        <span>Admin Access</span>
+      </div>
+      {% endif %}
+      {% if db %}
+      <div class="db-status db-status--ok" id="db-status">
+        <span class="db-status__dot"></span>
+        <span>MySQL Connected</span>
+      </div>
+      {% else %}
+      <div class="db-status db-status--err" id="db-status">
+        <span class="db-status__dot"></span>
+        <span>DB Offline</span>
+      </div>
+      {% endif %}
+      <div style="margin-top: 1.2rem; font-size: 0.68rem; color: var(--text-muted); text-align: center; line-height: 1.5; border-top: 1px solid var(--border); padding-top: 0.8rem;">
+        Developed by<br>
+        <span style="color: var(--cyan); font-weight: 600;">Shuvro Deb Nath</span> &amp;<br>
+        <span style="color: var(--purple); font-weight: 600;">Afsana Yesmin Shova</span>
+      </div>
+    </div>
+  </nav>
+
+  <header class="topbar" id="topbar">
+    <button class="topbar__hamburger" id="sidebar-toggle" aria-label="Toggle sidebar">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar__breadcrumb">
+      <span class="topbar__breadcrumb-home">RECON-X</span>
+      <svg viewBox="0 0 6 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4-4 4"/></svg>
+      <span>{% block breadcrumb %}Dashboard{% endblock %}</span>
+    </div>
+    <div class="topbar__right">
+      <div class="topbar__time" id="topbar-time"></div>
+      <div class="topbar__scan-badge" id="topbar-scan-badge" style="display:none" title="Session scans">
+        <span class="scan-badge-dot"></span>
+        <span id="topbar-scan-count">0 scans</span>
+      </div>
+      {% if current_user %}
+      <div class="topbar__user" id="topbar-user">
+        <div class="topbar__avatar" title="{{ current_user.username }}">
+          {{ current_user.username[0].upper() }}
+        </div>
+        <div class="topbar__userinfo">
+          <span class="topbar__username">{{ current_user.username }}</span>
+          {% if is_admin %}
+          <span class="topbar__role topbar__role--admin">ADMIN</span>
+          {% else %}
+          <span class="topbar__role topbar__role--user">USER</span>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('logout') }}" class="topbar__logout" title="Sign out" id="logout-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- ── Main Content ── -->
+  <main class="main-content" id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Notification Toast ── -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- ── Scripts ── -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/floating-bg.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

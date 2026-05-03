@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}New Scan — RECON-X{% endblock %}
+{% block breadcrumb %}New Scan{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__text">
+    <h1 class="page-title">New Scan</h1>
+    <p class="page-sub">Configure and launch a modular reconnaissance operation</p>
+  </div>
+</div>
+
+<div class="scan-layout" id="scan-layout">
+
+  <!-- ── Config Panel ── -->
+  <div class="card scan-config" id="scan-config-panel">
+    <div class="card__header">
+      <h2 class="card__title">Scan Configuration</h2>
+    </div>
+    <div class="card__body">
+
+      <!-- Target -->
+      <div class="form-group" id="fg-domain">
+        <label class="form-label" for="scan-domain">Target Domain <span class="required">*</span></label>
+        <div class="input-group">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>
+            <path d="M12 3v18M3 12h18"/>
+          </svg>
+          <input type="text" id="scan-domain" class="form-input" placeholder="example.com" autocomplete="off" />
+        </div>
+        <span class="form-hint">Enter the root domain without http:// prefix</span>
+      </div>
+
+      <!-- Module Toggles -->
+      <div class="form-group" id="fg-modules">
+        <label class="form-label">Active Modules</label>
+        <div class="module-toggle-grid" id="module-toggle-grid">
+          <div class="module-toggle active" id="toggle-a" data-module="A">
+            <div class="module-toggle__header">
+              <span class="module-toggle__id">A</span>
+              <div class="toggle-switch" id="switch-a"><div class="toggle-switch__knob"></div></div>
+            </div>
+            <div class="module-toggle__name">Subdomain Discovery</div>
+            <div class="module-toggle__desc">crt.sh API enumeration</div>
+          </div>
+          <div class="module-toggle active" id="toggle-b" data-module="B">
+            <div class="module-toggle__header">
+              <span class="module-toggle__id">B</span>
+              <div class="toggle-switch" id="switch-b"><div class="toggle-switch__knob"></div></div>
+            </div>
+            <div class="module-toggle__name">Directory Brute-Force</div>
+            <div class="module-toggle__desc">Multi-threaded prober</div>
+          </div>
+          <div class="module-toggle active" id="toggle-c" data-module="C">
+            <div class="module-toggle__header">
+              <span class="module-toggle__id">C</span>
+              <div class="toggle-switch" id="switch-c"><div class="toggle-switch__knob"></div></div>
+            </div>
+            <div class="module-toggle__name">Payload Suggester</div>
+            <div class="module-toggle__desc">XSS &amp; SQLi context analysis</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Options -->
+      <details class="advanced-opts" id="advanced-opts">
+        <summary class="advanced-opts__summary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          Advanced Options
+        </summary>
+        <div class="advanced-opts__body">
+          <div class="form-group" id="fg-threads">
+            <label class="form-label" for="scan-threads">Thread Count</label>
+            <div class="range-group" id="thread-range-group">
+              <input type="range" id="scan-threads" min="5" max="100" value="20" class="range-input" />
+              <span class="range-val" id="thread-val">20</span>
+            </div>
+            <span class="form-hint">Higher values = faster but more aggressive</span>
+          </div>
+          <div class="form-group" id="fg-wordlist">
+            <label class="form-label" for="scan-wordlist">Custom Wordlist Path</label>
+            <div class="input-group">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+              </svg>
+              <input type="text" id="scan-wordlist" class="form-input" placeholder="Leave blank to use default wordlist" />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <button class="btn btn--primary btn--full btn--lg" id="start-scan-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5,3 19,12 5,21"/>
+        </svg>
+        Launch Scan
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Live Output Panel ── -->
+  <div class="card scan-output" id="scan-output-panel">
+    <div class="card__header">
+      <h2 class="card__title">Live Output</h2>
+      <div class="scan-header-right">
+        <button class="btn btn--stop hidden" id="stop-scan-btn" title="Stop this scan">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+          </svg>
+          Stop Scan
+        </button>
+        <div class="scan-status-pill" id="scan-status-pill">
+          <span class="scan-status-pill__dot"></span>
+          <span id="scan-status-label">Ready</span>
+        </div>
+      </div>
+    </div>
+    <!-- Progress bar -->
+    <div class="scan-progress-bar" id="scan-progress-bar" style="display:none">
+      <div class="scan-progress-bar__fill" id="scan-progress-fill"></div>
+    </div>
+    <div class="card__body p-0">
+      <div class="terminal-output" id="terminal-output">
+        <div class="terminal-output__placeholder" id="terminal-placeholder">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="8" y="12" width="48" height="40" rx="4"/>
+            <path d="M20 28 l6 5-6 5M32 38h10"/>
+          </svg>
+          <p>Configure a scan and press <strong>Launch Scan</strong> to see live output here.</p>
+        </div>
+        <div class="terminal-output__lines" id="output-lines"></div>
+      </div>
+    </div>
+
+    <!-- Result Summary (shown after completion) -->
+    <div class="result-summary hidden" id="result-summary">
+      <div class="result-summary__header">Scan Complete</div>
+      <div class="result-summary__stats" id="result-stats"></div>
+      <a id="view-detail-btn" href="#" class="btn btn--ghost btn--sm">View Full Report →</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/scan.js') }}"></script>
+{% endblock %}

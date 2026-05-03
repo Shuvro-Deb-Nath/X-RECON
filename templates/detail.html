@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}{{ domain }} — RECON-X{% endblock %}
+{% block breadcrumb %}Results / {{ domain }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__text">
+    <h1 class="page-title">{{ domain }}</h1>
+    <p class="page-sub">Full reconnaissance report</p>
+  </div>
+  <a href="{{ url_for('results_page') }}" class="btn btn--ghost">← Back to Results</a>
+</div>
+
+{% if not detail %}
+<div class="empty-state" id="domain-not-found">
+  <p>No data found for <strong>{{ domain }}</strong>. Run a scan first.</p>
+</div>
+{% else %}
+
+<!-- ── Summary Bar ── -->
+<div class="summary-bar" id="summary-bar">
+  <div class="summary-item">
+    <span class="summary-item__num">{{ detail.subdomains | length }}</span>
+    <span class="summary-item__label">Subdomains</span>
+  </div>
+  <div class="summary-sep"></div>
+  <div class="summary-item">
+    {% set dir_count = detail.subdomains | map(attribute='directories') | map('length') | sum %}
+    <span class="summary-item__num">{{ dir_count }}</span>
+    <span class="summary-item__label">Directories</span>
+  </div>
+  <div class="summary-sep"></div>
+  <div class="summary-item">
+    {% set vuln_count = 0 %}
+    {% for s in detail.subdomains %}{% for d in s.directories %}{% set vuln_count = vuln_count + d.vulnerabilities | length %}{% endfor %}{% endfor %}
+    <span class="summary-item__num {% if vuln_count > 0 %}text-danger{% endif %}">{{ vuln_count }}</span>
+    <span class="summary-item__label">Payload Hints</span>
+  </div>
+  <div class="summary-sep"></div>
+  <div class="summary-item">
+    <span class="summary-item__num text-sm-date">{{ detail.added_at | string | truncate(19, True, '') }}</span>
+    <span class="summary-item__label">Scanned At</span>
+  </div>
+</div>
+
+<!-- ── Subdomains Accordion ── -->
+{% for sub in detail.subdomains %}
+<div class="accordion" id="acc-{{ loop.index }}">
+  <button class="accordion__trigger" id="acc-btn-{{ loop.index }}">
+    <div class="accordion__left">
+      <span class="accordion__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/>
+          <path d="M8.7 10.7L15.3 7.3M8.7 13.3L15.3 16.7"/>
+        </svg>
+      </span>
+      <span class="accordion__title">{{ sub.subdomain }}</span>
+    </div>
+    <div class="accordion__right">
+      <span class="badge badge--blue">{{ sub.directories | length }} dirs</span>
+      {% set v = sub.directories | map(attribute='vulnerabilities') | map('length') | sum %}
+      {% if v > 0 %}<span class="badge badge--red">⚠ {{ v }} hints</span>{% endif %}
+      <svg class="accordion__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 9l6 6 6-6"/>
+      </svg>
+    </div>
+  </button>
+  <div class="accordion__body" id="acc-body-{{ loop.index }}">
+    {% if sub.directories %}
+    <table class="data-table data-table--nested">
+      <thead>
+        <tr><th>URL</th><th>Status</th><th>Size</th><th>Payloads</th></tr>
+      </thead>
+      <tbody>
+        {% for d in sub.directories %}
+        <tr>
+          <td><a href="{{ d.url }}" target="_blank" rel="noopener noreferrer" class="table-link table-link--mono">{{ d.url }}</a></td>
+          <td>
+            {% if d.status_code == 200 %}<span class="badge badge--cyan">200 OK</span>
+            {% elif d.status_code in [301, 302] %}<span class="badge badge--blue">{{ d.status_code }}</span>
+            {% elif d.status_code == 403 %}<span class="badge badge--orange">403</span>
+            {% else %}<span class="badge badge--grey">{{ d.status_code }}</span>{% endif %}
+          </td>
+          <td class="text-muted text-sm">{{ d.content_length }} B</td>
+          <td>
+            {% if d.vulnerabilities %}
+            <button class="btn btn--xs btn--danger payload-toggle" data-target="payload-{{ loop.index }}-{{ loop.index0 }}">
+              View {{ d.vulnerabilities | length }} hint(s)
+            </button>
+            {% else %}<span class="text-muted text-sm">—</span>{% endif %}
+          </td>
+        </tr>
+        {% if d.vulnerabilities %}
+        <tr class="payload-row hidden" id="payload-{{ loop.index }}-{{ loop.index0 }}">
+          <td colspan="4">
+            {% for v in d.vulnerabilities %}
+            <div class="payload-block">
+              <div class="payload-block__header">
+                <span class="badge badge--{{ 'red' if 'XSS' in v.payload_type else 'orange' }}">
+                  {{ v.payload_type }}
+                </span>
+                <span class="text-muted text-sm">Form: {{ v.form_action }} [{{ v.method }}]</span>
+              </div>
+              <div class="payload-list">
+                {% for p in v.suggested_payloads %}
+                <div class="payload-item">
+                  <code>{{ p }}</code>
+                  <button class="copy-btn" data-copy="{{ p }}" title="Copy payload">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                    </svg>
+                  </button>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted text-sm p-4">No directories found for this subdomain.</p>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Accordion ─────────────────────────────────────────────────
+document.querySelectorAll('.accordion__trigger').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const acc = btn.closest('.accordion');
+    acc.classList.toggle('accordion--open');
+  });
+});
+
+// ── Payload row toggle ────────────────────────────────────────
+document.querySelectorAll('.payload-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const row = document.getElementById(btn.dataset.target);
+    if (row) row.classList.toggle('hidden');
+  });
+});
+
+// ── Copy payloads ─────────────────────────────────────────────
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(btn.dataset.copy);
+    showToast('Payload copied!', 'success');
+  });
+});
+</script>
+{% endblock %}

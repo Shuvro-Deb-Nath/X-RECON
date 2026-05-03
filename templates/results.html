@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+{% block title %}Results — RECON-X{% endblock %}
+{% block breadcrumb %}Results{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__text">
+    <h1 class="page-title">Scan Results</h1>
+    <p class="page-sub">{% if db %}Persistent results from MySQL database{% else %}Session scan history (memory-only mode){% endif %}</p>
+  </div>
+  <div class="page-header__actions">
+    <input type="text" id="results-search" class="form-input form-input--bare form-input--sm" placeholder="Filter domains…" />
+    <button class="btn btn--ghost btn--sm" id="export-btn" title="Export results as JSON">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Export
+    </button>
+    {% if not db %}
+    <button class="btn btn--ghost btn--sm" id="refresh-btn" title="Refresh in-memory scans">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" id="refresh-icon">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+      </svg>
+      Refresh
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+{% if not db %}
+<div class="alert alert--info" id="db-info-banner">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+    <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16v1"/>
+  </svg>
+  <span>Running in <strong>memory-only mode</strong>. Scan data is not persisted — results below are from this session only. Configure MySQL in <code>config.py</code> for persistence.</span>
+</div>
+{% endif %}
+
+<!-- Table container (populated by JS in no-DB mode, or by Jinja in DB mode) -->
+<div id="results-container">
+{% if data %}
+  <div class="card" id="results-table-card">
+    <div class="card__body p-0">
+      <div class="table-scroll-wrapper">
+        <table class="data-table data-table--full" id="results-main-table">
+          <thead>
+            <tr>
+              <th>Domain</th>
+              {% if is_admin %}<th>Scanned By</th>{% endif %}
+              <th>Subdomains</th>
+              <th>Directories</th>
+              <th>Payload Hints</th>
+              <th>Scanned At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody">
+            {% for row in data %}
+            <tr data-domain="{{ row.domain }}">
+              <td>
+                <div class="domain-cell">
+                  <span class="domain-icon">🌐</span>
+                  <a href="{{ url_for('result_detail', domain=row.domain) }}" class="table-link">{{ row.domain }}</a>
+                </div>
+              </td>
+              {% if is_admin %}
+              <td>
+                <span class="scanner-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                  </svg>
+                  {{ row.scanned_by or 'unknown' }}
+                </span>
+              </td>
+              {% endif %}
+              <td><span class="badge badge--cyan">{{ row.subdomain_count or 0 }}</span></td>
+              <td><span class="badge badge--blue">{{ row.directory_count or 0 }}</span></td>
+              <td>
+                {% if (row.vuln_count or 0) > 0 %}
+                <span class="badge badge--red">⚠ {{ row.vuln_count }}</span>
+                {% else %}
+                <span class="badge badge--grey">0</span>
+                {% endif %}
+              </td>
+              <td class="text-muted text-sm">{{ row.added_at | string | truncate(16, True, '') }}</td>
+              <td>
+                <div class="action-btns">
+                  <a href="{{ url_for('result_detail', domain=row.domain) }}" class="btn btn--ghost btn--xs">Detail</a>
+                  <button class="btn btn--danger btn--xs delete-target-btn" data-domain="{{ row.domain }}">Delete</button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% elif db %}
+  <div class="empty-state empty-state--large" id="no-results-state">
+    <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.2">
+      <circle cx="48" cy="48" r="40"/>
+      <path d="M48 30v24M48 62v4"/>
+    </svg>
+    <h3>No results yet</h3>
+    <p>Run your first scan to populate the database.</p>
+    <a href="{{ url_for('scan_page') }}" class="btn btn--primary">Start a Scan</a>
+  </div>
+{% else %}
+  <!-- No-DB mode: JS will populate this -->
+  <div id="memory-results-container"></div>
+{% endif %}
+</div>
+
+<!-- No-filter match message -->
+<div class="empty-state" id="no-filter-match" style="display:none">
+  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
+    <circle cx="32" cy="32" r="28"/><path d="M20 20l24 24M44 20L20 44"/>
+  </svg>
+  <p>No domains match your filter.</p>
+</div>
+
+<!-- ══ Scan Log Modal ══════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="log-modal-backdrop" aria-hidden="true">
+  <div class="modal-panel" role="dialog" aria-labelledby="modal-title" id="log-modal-panel">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="modal-header__left">
+        <div class="modal-title-row">
+          <span class="modal-domain-icon">🎯</span>
+          <div>
+            <h2 class="modal-title" id="modal-title">Scan Log</h2>
+            <p class="modal-sub" id="modal-sub">Loading…</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-header__right">
+        <div class="modal-stats" id="modal-stats"></div>
+        <div class="scan-status-pill" id="modal-status-pill">
+          <span class="scan-status-pill__dot"></span>
+          <span id="modal-status-label">—</span>
+        </div>
+        <button class="modal-close-btn" id="modal-close-btn" title="Close" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <!-- Modal Terminal Body -->
+    <div class="modal-terminal" id="modal-terminal">
+      <div class="modal-terminal__lines" id="modal-lines"></div>
+    </div>
+    <!-- Modal Footer -->
+    <div class="modal-footer" id="modal-footer">
+      <div class="modal-footer__result" id="modal-result-summary"></div>
+      <div class="modal-footer__actions">
+        <button class="btn btn--ghost btn--sm" id="modal-copy-btn" title="Copy all logs to clipboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+          Copy Logs
+        </button>
+        <button class="btn btn--ghost btn--sm" id="modal-close-footer-btn">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const IS_DB    = {{ 'true' if db else 'false' }};
+const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+let memoryScans = [];
+
+// ── Search / filter ────────────────────────────────────────────
+const searchInput = document.getElementById('results-search');
+if (searchInput) {
+  searchInput.addEventListener('input', applyFilter);
+}
+
+function applyFilter() {
+  const q = (searchInput?.value || '').toLowerCase();
+  const rows = document.querySelectorAll('#results-tbody tr, .memory-scan-row');
+  let visible = 0;
+  rows.forEach(tr => {
+    const domain = (tr.dataset.domain || '').toLowerCase();
+    const show = !q || domain.includes(q);
+    tr.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const noMatch = document.getElementById('no-filter-match');
+  if (noMatch) noMatch.style.display = (q && visible === 0) ? 'flex' : 'none';
+}
+
+// ── Delete target (DB mode) ────────────────────────────────────
+document.querySelectorAll('.delete-target-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const domain = btn.dataset.domain;
+    if (!confirm(`Delete all data for ${domain}?`)) return;
+    showToast(`Deleting ${domain}…`, 'info');
+    const r = await fetch('/api/targets');
+    const targets = await r.json();
+    const t = targets.find(x => x.domain === domain);
+    if (!t) return;
+    await fetch(`/api/targets/${t.id}`, { method: 'DELETE' });
+    btn.closest('tr').remove();
+    showToast(`${domain} deleted`, 'success');
+  });
+});
+
+// ── In-memory mode: load from /api/scans ──────────────────────
+async function loadMemoryScans() {
+  if (IS_DB) return;
+  const icon = document.getElementById('refresh-icon');
+  if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+  try {
+    const r = await fetch('/api/scans');
+    memoryScans = await r.json();
+    renderMemoryTable(memoryScans);
+  } catch (e) {
+    console.error('Failed to load memory scans', e);
+  } finally {
+    if (icon) icon.style.animation = '';
+  }
+}
+
+function renderMemoryTable(scans) {
+  const container = document.getElementById('memory-results-container');
+  if (!container) return;
+
+  if (!scans || scans.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state empty-state--large" id="no-results-state">
+        <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.2">
+          <circle cx="48" cy="48" r="40"/>
+          <path d="M48 30v24M48 62v4"/>
+        </svg>
+        <h3>No scans this session</h3>
+        <p>Results aren't persisted without MySQL. Start a scan to see live results here.</p>
+        <a href="/scan" class="btn btn--primary">Start a Scan</a>
+      </div>`;
+    return;
+  }
+
+  const rows = scans.map(s => {
+    const statusBadge = s.status === 'done'
+      ? '<span class="badge badge--cyan">Done</span>'
+      : s.status === 'running'
+        ? '<span class="badge badge--pulse">Running…</span>'
+        : s.status === 'stopped'
+          ? '<span class="badge badge--orange">Stopped</span>'
+          : '<span class="badge badge--red">Error</span>';
+
+    const vulnBadge = s.vuln_count > 0
+      ? `<span class="badge badge--red">⚠ ${s.vuln_count}</span>`
+      : `<span class="badge badge--grey">0</span>`;
+
+    return `<tr class="memory-scan-row" data-domain="${escHtml(s.domain)}" data-scan-id="${escHtml(s.scan_id)}">
+      <td>
+        <div class="domain-cell">
+          <span class="domain-icon">🌐</span>
+          <span class="table-link domain-log-link" style="cursor:pointer" data-scan-id="${escHtml(s.scan_id)}">${escHtml(s.domain)}</span>
+        </div>
+      </td>
+      ${IS_ADMIN ? `<td><span class="scanner-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="11" height="11"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>${escHtml(s.scanned_by || 'unknown')}</span></td>` : ''}
+      <td>${statusBadge}</td>
+      <td><span class="badge badge--cyan">${s.subdomain_count}</span></td>
+      <td><span class="badge badge--blue">${s.directory_count}</span></td>
+      <td>${vulnBadge}</td>
+      <td class="text-muted text-sm font-mono">${escHtml(s.started_at)} UTC</td>
+      <td>
+        <div class="action-btns">
+          <button class="btn btn--ghost btn--xs view-log-btn" data-scan-id="${escHtml(s.scan_id)}" title="View full scan log">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M7 8h10M7 12h6M7 16h8"/>
+            </svg>
+            View Logs
+          </button>
+          <span class="text-muted text-sm font-mono">${escHtml(s.scan_id)}</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="card" id="results-table-card">
+      <div class="card__body p-0">
+        <div class="table-scroll-wrapper">
+          <table class="data-table data-table--full" id="results-main-table">
+            <thead>
+              <tr>
+                <th>Domain</th>
+                ${IS_ADMIN ? '<th>Scanned By</th>' : ''}
+                <th>Status</th>
+                <th>Subdomains</th>
+                <th>Directories</th>
+                <th>Payload Hints</th>
+                <th>Started At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody">${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+
+  // Wire up view-log buttons + clickable domain
+  container.querySelectorAll('.view-log-btn, .domain-log-link').forEach(el => {
+    el.addEventListener('click', () => openLogModal(el.dataset.scanId));
+  });
+
+  applyFilter();
+}
+
+// ── Scan Log Modal ─────────────────────────────────────────────
+let modalLogs = [];
+
+async function openLogModal(scanId) {
+  const backdrop = document.getElementById('log-modal-backdrop');
+  const linesEl  = document.getElementById('modal-lines');
+  const titleEl  = document.getElementById('modal-title');
+  const subEl    = document.getElementById('modal-sub');
+  const statsEl  = document.getElementById('modal-stats');
+  const pillEl   = document.getElementById('modal-status-pill');
+  const statusLbl = document.getElementById('modal-status-label');
+  const resultEl = document.getElementById('modal-result-summary');
+
+  // Reset modal
+  linesEl.innerHTML = '<div class="output-line output-line--system">Loading scan log…</div>';
+  statsEl.innerHTML = '';
+  resultEl.innerHTML = '';
+  titleEl.textContent = 'Scan Log';
+  subEl.textContent = `Scan ID: ${scanId}`;
+  pillEl.className = 'scan-status-pill running';
+  statusLbl.textContent = 'Loading…';
+
+  // Show modal
+  backdrop.classList.add('modal--open');
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const r = await fetch(`/api/scan/${scanId}/detail`);
+    if (!r.ok) throw new Error('Scan not found');
+    const data = await r.json();
+    modalLogs = data.logs || [];
+
+    // Populate header
+    titleEl.textContent = data.domain !== 'unknown' ? data.domain : 'Scan Log';
+    subEl.textContent = `Scan ID: ${scanId}`;
+
+    // Status pill
+    const st = data.status;
+    pillEl.className = `scan-status-pill ${st}`;
+    statusLbl.textContent = st === 'done' ? 'Complete' : st === 'stopped' ? 'Stopped' : st === 'error' ? 'Error' : 'Running';
+
+    // Stats badges
+    const result = data.result || {};
+    const subs = (result.subdomains || []).length;
+    const dirs = (result.directories || []).length;
+    const vulns = (result.vulnerabilities || []).length;
+    if (subs || dirs || vulns) {
+      statsEl.innerHTML = `
+        <span class="badge badge--cyan">${subs} sub${subs !== 1 ? 's' : ''}</span>
+        <span class="badge badge--blue">${dirs} dir${dirs !== 1 ? 's' : ''}</span>
+        <span class="badge badge--${vulns > 0 ? 'red' : 'grey'}">${vulns} hint${vulns !== 1 ? 's' : ''}</span>
+      `;
+    }
+
+    // Render log lines
+    linesEl.innerHTML = '';
+    if (modalLogs.length === 0) {
+      linesEl.innerHTML = '<div class="output-line text-muted">No log output recorded for this scan.</div>';
+    } else {
+      modalLogs.forEach(line => appendModalLine(line, linesEl));
+    }
+
+    // Result summary footer
+    if (result.subdomains && result.subdomains.length > 0) {
+      resultEl.innerHTML = buildResultSummary(result, data.status);
+    }
+
+    // Scroll to bottom of terminal
+    const term = document.getElementById('modal-terminal');
+    if (term) term.scrollTop = term.scrollHeight;
+
+  } catch (err) {
+    linesEl.innerHTML = `<div class="output-line output-line--err">[ERROR] Could not load scan log: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function appendModalLine(text, container) {
+  const div = document.createElement('div');
+  div.className = 'output-line' +
+    (text.includes('[FATAL]') || (text.includes('ERROR') && !text.includes('✗'))
+        ? ' output-line--err'
+      : text.includes('✓')
+        ? ' output-line--ok'
+      : text.includes('⚠') || text.includes('WARN') || text.includes('stopped')
+        ? ' output-line--warn'
+      : text.includes('[MODULE') || text.includes('══')
+        ? ' output-line--system'
+        : '');
+  div.textContent = text;
+  container.appendChild(div);
+}
+
+function buildResultSummary(result, status) {
+  const subs = result.subdomains || [];
+  const dirs = result.directories || [];
+  const vulns = result.vulnerabilities || [];
+
+  let html = `<div class="modal-result-block">`;
+  html += `<div class="modal-result-title">${status === 'stopped' ? '⚠ Partial Results (scan stopped early)' : '✓ Scan Results'}</div>`;
+
+  if (subs.length) {
+    html += `<div class="modal-result-section"><span class="modal-result-label">Subdomains (${subs.length})</span><div class="modal-result-tags">`;
+    subs.slice(0, 20).forEach(s => {
+      html += `<span class="modal-tag modal-tag--cyan">${escHtml(s)}</span>`;
+    });
+    if (subs.length > 20) html += `<span class="modal-tag modal-tag--grey">+${subs.length - 20} more</span>`;
+    html += `</div></div>`;
+  }
+
+  if (dirs.length) {
+    html += `<div class="modal-result-section"><span class="modal-result-label">Discovered Paths (${dirs.length})</span><div class="modal-result-tags">`;
+    dirs.slice(0, 15).forEach(d => {
+      const color = d.status_code === 200 ? 'cyan' : d.status_code === 403 ? 'orange' : 'blue';
+      html += `<span class="modal-tag modal-tag--${color}">[${d.status_code}] ${escHtml(d.url)}</span>`;
+    });
+    if (dirs.length > 15) html += `<span class="modal-tag modal-tag--grey">+${dirs.length - 15} more</span>`;
+    html += `</div></div>`;
+  }
+
+  if (vulns.length) {
+    html += `<div class="modal-result-section"><span class="modal-result-label">Payload Hints (${vulns.length})</span><div class="modal-result-tags">`;
+    vulns.slice(0, 10).forEach(v => {
+      html += `<span class="modal-tag modal-tag--red">⚠ ${escHtml(v.payload_type || 'Unknown')}</span>`;
+    });
+    if (vulns.length > 10) html += `<span class="modal-tag modal-tag--grey">+${vulns.length - 10} more</span>`;
+    html += `</div></div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function closeLogModal() {
+  const backdrop = document.getElementById('log-modal-backdrop');
+  backdrop.classList.remove('modal--open');
+  document.body.style.overflow = '';
+  modalLogs = [];
+}
+
+// Close modal
+document.getElementById('modal-close-btn')?.addEventListener('click', closeLogModal);
+document.getElementById('modal-close-footer-btn')?.addEventListener('click', closeLogModal);
+document.getElementById('log-modal-backdrop')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('log-modal-backdrop')) closeLogModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLogModal();
+});
+
+// Copy logs to clipboard
+document.getElementById('modal-copy-btn')?.addEventListener('click', async () => {
+  if (!modalLogs.length) return;
+  try {
+    await navigator.clipboard.writeText(modalLogs.join('\n'));
+    showToast('Logs copied to clipboard!', 'success');
+  } catch (e) {
+    showToast('Could not copy logs', 'error');
+  }
+});
+
+// ── Export ─────────────────────────────────────────────────────
+document.getElementById('export-btn')?.addEventListener('click', () => {
+  let exportData;
+  if (IS_DB) {
+    exportData = Array.from(document.querySelectorAll('#results-tbody tr')).map(tr => ({
+      domain: tr.dataset.domain,
+    }));
+  } else {
+    exportData = memoryScans;
+  }
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `reconx-results-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Results exported!', 'success');
+});
+
+// ── Refresh button ─────────────────────────────────────────────
+document.getElementById('refresh-btn')?.addEventListener('click', loadMemoryScans);
+
+// ── Auto-refresh running scans ─────────────────────────────────
+function scheduleAutoRefresh() {
+  if (IS_DB) return;
+  const hasRunning = memoryScans.some(s => s.status === 'running');
+  if (hasRunning) setTimeout(async () => { await loadMemoryScans(); scheduleAutoRefresh(); }, 3000);
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ───────────────────────────────────────────────────────
+if (!IS_DB) loadMemoryScans().then(scheduleAutoRefresh);
+</script>
+{% endblock %}
