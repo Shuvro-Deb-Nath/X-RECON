@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
 
   <!-- Main CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
@@ -127,9 +127,9 @@
       </div>
       {% endif %}
       <div style="margin-top: 1.2rem; font-size: 0.68rem; color: var(--text-muted); text-align: center; line-height: 1.5; border-top: 1px solid var(--border); padding-top: 0.8rem;">
-        Developed by<br>
-        <span style="color: var(--cyan); font-weight: 600;">Shuvro Deb Nath</span> &amp;<br>
-        <span style="color: var(--purple); font-weight: 600;">Afsana Yesmin Shova</span>
+           Developed by<br>      
+          <span style="color: var(--purple); font-weight: 600;">Afsana Yesmin Shova</span> &amp;<br>
+        <span style="color: var(--cyan); font-weight: 600;">Shuvro Deb Nath</span> 
       </div>
     </div>
   </nav>

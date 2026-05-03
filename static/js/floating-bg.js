@@ -54,7 +54,7 @@
 
     const floaters = defs.map(def => {
       const el = document.createElement('div');
-      let style = `position:absolute;pointer-events:auto;user-select:none;
+      let style = `position:absolute;pointer-events:none;user-select:none;
         display:flex;align-items:center;justify-content:center;
         width:${def.w}px;height:${def.h}px;opacity:${def.op};
         transition:filter .2s;will-change:left,top;`;
