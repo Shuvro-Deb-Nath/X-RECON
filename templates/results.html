@@ -3,13 +3,13 @@
 {% block breadcrumb %}Results{% endblock %}
 
 {% block content %}
-<div class="page-header" style="flex-wrap:wrap;gap:12px;">
+<div class="page-header">
   <div class="page-header__text">
     <h1 class="page-title">Scan Results</h1>
     <p class="page-sub">{% if db %}Persistent results from MySQL database{% else %}Session scan history (memory-only mode){% endif %}</p>
   </div>
-  <div class="page-header__actions" style="flex-wrap:wrap;gap:8px;">
-    <input type="text" id="results-search" class="form-input form-input--bare form-input--sm" placeholder="Filter domains…" style="min-width:140px;flex:1;" />
+  <div class="page-header__actions">
+    <input type="text" id="results-search" class="form-input form-input--bare form-input--sm" placeholder="Filter domains…" />
     <button class="btn btn--ghost btn--sm" id="export-btn" title="Export results as JSON">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
